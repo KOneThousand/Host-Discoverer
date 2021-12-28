@@ -7,5 +7,10 @@ g++ HostDiscoverer.cpp -o HostDiscoverer
 ```
 # Usage
 ```
+sudo ./HostDiscoverer [Ipv4 address] [Netmask]
+```
+or 
 
+```
+sudo ./HostDiscoverer [Ipv4 address]/[CIDR Netmask]
 ```
