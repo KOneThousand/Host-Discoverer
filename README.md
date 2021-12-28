@@ -2,9 +2,12 @@
 Simple C++ script that is able to found up hosts in local network. Very fast, light and accurate.
 
 ## Installation
+> Manually
 ```
-g++ HostDiscoverer.cpp -o HostDiscoverer
+cd src/
+g++ HostDiscoverer.cpp Kping.cpp -o HostDiscoverer
 ```
+> CMake
 ## Usage
 ```
 sudo ./HostDiscoverer [Ipv4 address] [Netmask]
