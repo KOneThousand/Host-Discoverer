@@ -14,3 +14,5 @@ or
 ```
 sudo ./HostDiscoverer [Ipv4 address]/[CIDR Netmask]
 ```
+# Requirements
+- g++
