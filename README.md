@@ -2,7 +2,7 @@
 Simple C++ script that is able to found up hosts in local network. Very fast, light and accurate.
 
 ## Installation
-> Manually
+> Manual
 ```
 cd src/
 g++ HostDiscoverer.cpp Kping.cpp -o HostDiscoverer
