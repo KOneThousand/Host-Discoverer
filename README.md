@@ -9,7 +9,9 @@ g++ HostDiscoverer.cpp Kping.cpp -o HostDiscoverer
 ```
 > CMake
 ```
-
+mkdir build
+cd build
+cmake
 ```
 ## Usage
 ```
