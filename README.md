@@ -10,10 +10,8 @@ g++ HostDiscoverer.cpp Kping.cpp -o HostDiscoverer
 > CMake
 ```
 cd Host_Discoverer
-mkdir build
-cd build
-cmake ../
-cmake --build .
+mkdir build && cd build
+cmake ../ && cmake --build .
 ```
 ## Usage
 ```
