@@ -1,8 +1,8 @@
 //******************************************************
 // Filename: HostDiscoverer.cpp
 // Purpose:  Scan of local networks
-// Author:   KOneThousand; 
-// Date:     October 21, 2021
+// Author:   KOneThousand 
+// Date:     June 21, 2022
 //******************************************************
 
 #include <iostream>
@@ -11,7 +11,7 @@
 #include <array>
 #include <cmath>
 #include <algorithm>
-
+#include <bits/stdc++.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <unistd.h>
@@ -40,139 +40,48 @@ union IP {
 
 const int ARRAY_CHUNKS_LEN = 4;
 
-int countPoints(const std::vector<std::string>& arguments, const int &argvIndex)
+std::pair<std::string, std::string> separateIPfromCIDR(const std::string CIDR)
 {
-	// return the number of points of the entered ip or netmask
-	return std::count(std::begin(arguments[argvIndex]), std::end(arguments[argvIndex]), '.'); 
-}
-
-int countSlashes(const std::vector<std::string>& arguments, const int &argvIndex)
-{
-	// return the number of slashes of the entered ip or netmask
-	return std::count(std::begin(arguments[argvIndex]), std::end(arguments[argvIndex]), '/'); 
-}
-
-std::string decimalToBinary(int decimalNum)
-{
-	std::string binaryNum;
-	unsigned int reminder;
-	while(decimalNum > 0)
-	{
-		reminder = decimalNum % 2;
-		binaryNum += (reminder + '0'); // conversion int to char
-		decimalNum /= 2;
-	}	
-	binaryNum.resize(8, '0'); // replace with zeros the empty characters
-	                          // until the 8th character
-	return binaryNum; 
-}
-
-std::string oppositeBinNum(std::string binaryNum) // opposite binary number
-{
-	for (unsigned int i = 0; i < binaryNum.length(); ++i)
-	{	
-		if (binaryNum[i] == '1')
-		{
-			binaryNum[i] = '0';
-		}
-		else
-		{
-			binaryNum[i] = '1';
-		}
-	}
-
-	return binaryNum;
-}
-
-int binaryToDecimal(const std::string& binaryNum)
-{
-	unsigned int result = 0;
-	for (unsigned int i = 0; i < binaryNum.length(); ++i)
-	{	
-		if (binaryNum[i] == '1')
-		{
-			result += pow(2, i);
-		}
-	}
-
-	return result;
-}
-
-std::array<std::string, 2> separateIPfromCIDR(const std::string CIDR)
-{
-	std::array<std::string, 2> ipAndMask;
-	ipAndMask[0].assign(CIDR, 0, CIDR.find('/')); // strip out the ip address
-	std::string CIDRMask;
-	CIDRMask.assign(CIDR, (CIDR.find('/') + 1), 2); // strip out the CIDR Netmask
-	unsigned int int_CIDRMask = stoi(CIDRMask);
+	std::string ipAddr, netmask;
+	ipAddr.assign(CIDR, 0, CIDR.find('/')); // Strip out the ip address
 
 	/* CALCULATE THE NETMASK FROM CIDR NOTATION */
-	std::array<std::string, 4> binNetmask;
-	unsigned int index = 0;
-	while(int_CIDRMask > 7)
+	std::string CIDRMask;
+	CIDRMask.assign(CIDR, (CIDR.find('/') + 1), 2); // Strip out the CIDR Netmask
+	std::array<std::bitset<8>, 4> binNetmask;
+	int nBlock = stoi(CIDRMask) / 8;
+	for(int i = 0; i < nBlock; i++)
 	{
-		int_CIDRMask -= 8;
-		binNetmask[index].resize(8, '1'); // fill the chunk with 1's
-		index++;
+		binNetmask[i] = 255; // Fill the chunk with 1's
+	}
+	if (nBlock < 4)
+	{
+		std::string temp = std::string(stoi(CIDRMask) % 8, '1'); // Add a number of 1's equal to CIDRMask % 8
+		temp.resize(8, '0');
+		binNetmask[nBlock] = std::bitset<8>(temp);
 	}
 
-	if(int_CIDRMask > 0)
+	for(unsigned int i = 0; i < ARRAY_CHUNKS_LEN - 1; ++i)
 	{
-		binNetmask[index].resize(int_CIDRMask, '1'); // add a number of 1's equal to int_CIDRMask
+		std::string decimalTemp = std::to_string(binNetmask[i].to_ulong());
+		netmask += (decimalTemp + '.');
 	}
+	netmask += std::to_string(binNetmask[3].to_ulong());
 
-	for(unsigned int i = 0; i < ARRAY_CHUNKS_LEN; ++i)
-	{
-		binNetmask[i].resize(8, '0'); // replace with zeros the empty characters
-									  // until the 8th character
-	}
-	std::string netmask;
-	for(unsigned int i = 0; i < ARRAY_CHUNKS_LEN; ++i)
-	{
-		std::string revTemp;
-		for(int j = 7; j >= 0; --j)
-		{
-			revTemp += binNetmask[i][j]; // reverse the binary netmask chunk
-		}
-
-		std::string decimalTemp = std::to_string(binaryToDecimal(revTemp));
-
-		if(i < 3)
-		{
-			netmask += (decimalTemp + '.');
-		}
-		else
-		{
-			netmask += decimalTemp;
-		}
-	}
-
-	ipAndMask[1] = netmask; // return the ip address and the netmask in CISCO notation
-
-	return ipAndMask;
+	return std::make_pair(ipAddr, netmask); // Return the ip address and the netmask in CISCO notation
 }
 
-std::array<int, 4> getChunks(const std::string &chunksToDivide) // fill an array with the numbers between the points
+std::array<int, 4> getChunks(const std::string &chunksToDivide) // Fill an array with the numbers between the points
 {
 	std::array<std::string, 4> str_Chunks;
-
-	int arrayIndex = 0, strIndex = 0;
-	for(unsigned int i = 0; i < ARRAY_CHUNKS_LEN; ++i)
-	{
-		while (chunksToDivide[strIndex] != '.' && strIndex < chunksToDivide.length())
-		{	
-			str_Chunks[arrayIndex] += chunksToDivide[strIndex];
-			++strIndex;
-		}
-		++strIndex;
-		++arrayIndex;
-	}
+	std::stringstream check(chunksToDivide);
+	std::string temp;
+	for(int i = 0; (getline(check, temp, '.')); i++) // Until the are tokens
+		str_Chunks[i] = temp;
 
 	std::array<int, 4> int_Chunks;
 	for (unsigned int i = 0; i < ARRAY_CHUNKS_LEN; ++i)
-	{
 		int_Chunks[i] = stoi(str_Chunks[i]);
-	} 
 
 	return int_Chunks;
 }
@@ -209,9 +118,10 @@ std::string lastIpAddrRange(const std::string& firstIpAddr, const std::string& n
 	int_netmaskChunks     = getChunks(netmask);
 	for(unsigned int i = 0; i < ARRAY_CHUNKS_LEN; ++i)
 	{	
-		std::string binNetmaskChunk = decimalToBinary(int_netmaskChunks[i]); // convert the netmask chunk from decimal to binary
-		std::string oppBinNetmaskChunk = oppositeBinNum(binNetmaskChunk); // calculate the opposite of the binary netmask chunk
-		int oppDecimalNetmaskChunk = binaryToDecimal(oppBinNetmaskChunk); // convert the opposite of the netmask chunk from binary to decimal
+		std::bitset<8> binNetmaskChunk (int_netmaskChunks[i]); // Convert the netmask chunk from decimal to binary
+		std::string oppBinNetmaskChunk = binNetmaskChunk.flip().to_string(); // Calculate the opposite of the binary netmask chunk
+		int oppDecimalNetmaskChunk = std::bitset<8>(std::bitset<8>(oppBinNetmaskChunk)).to_ulong(); // Convert the opposite of the 
+																									// netmask chunk from binary to decimal
 		
 		unsigned int tempCalc = oppDecimalNetmaskChunk | int_firstIpAddrChunks[i]; // bitwise OR operation
 		if (i < 3)
@@ -220,22 +130,22 @@ std::string lastIpAddrRange(const std::string& firstIpAddr, const std::string& n
 		}
 		else
 		{
-			lastIpAddr += std::to_string(tempCalc - 1); // remove broadcast ip address 
+			lastIpAddr += std::to_string(tempCalc - 1); // Remove broadcast ip address 
 		}
 	}
 
 	return lastIpAddr;
 }
 
-std::string mergeChunks(const int fstChunk, const int sndChunk, const int trdChunk, const int fthChunk) // merge the given 				
-{																																		  // chunks into a unique string 
+std::string mergeChunks(const int fstChunk, const int sndChunk, const int trdChunk, const int fthChunk) // merge the given chunks into a unique string				
+{ 
 	std::string currentIpAddr = std::to_string(fstChunk) + "." + std::to_string(sndChunk) + "." +
 								std::to_string(trdChunk) + "." + std::to_string(fthChunk);
-	return currentIpAddr;
+	return currentIpAddr; 	
 }
 
 constexpr unsigned int PING_PKT_S   = 64;  // Define the Packet Constants ping packet size
-constexpr unsigned int RECV_TIMEOUT = 10;  // timeout delay for receiving packets in secs
+constexpr unsigned int RECV_TIMEOUT = 10;  // Timeout delay for receiving packets in secs
 
 struct ping_pkt // Ping packet structure
 {
@@ -264,7 +174,7 @@ void foundHost(const std::array<int, 4> &currentIpAddrChunks, std::vector<std::s
     // Setting timeout of recv setting
     setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv_out, sizeof(tv_out));
 	
-	if (send_ping(currentIpAddr.data(), sockfd, pckt, r_addr)) // if the send_ping function is able to ping the host
+	if (send_ping((char*)currentIpAddr.data(), sockfd, pckt, r_addr)) // if the send_ping function is able to ping the host
 	{
 		upHosts.push_back(currentIpAddr);
 	}
@@ -298,18 +208,12 @@ void scan(const std::string& firstIpAddr, const std::string& lastIpAddr) // iter
 
 	int sockfd;
 	if (getuid())
-    {
         sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
-    }
     else
-    {
         sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
-    }
 
     if(sockfd == -1)
-    {
         return;
-    }
 
 	while (tempIp.data != lastIp.data) // ping all ip addresses of the range
 	{
@@ -326,88 +230,43 @@ void scan(const std::string& firstIpAddr, const std::string& lastIpAddr) // iter
 	if(!upHosts.empty()) // if at least an up host is found 
 	{
 		for(unsigned int i = 0; i < upHosts.size(); ++i)
-		{
 			std::cout << SET_BOLD_GREEN(<< upHosts[i] << " is up!\n");
-		}
 	}
 	else
-	{
 		std::cout << SET_BOLD_RED("No up host!\n");
-	}
+}
+
+void printUsage()
+{
+	throw std::runtime_error("Please do not use in military, secret service organizations, or for illegal purposes.\n"
+					   		 "Syntax: ./HostDiscover [ Ipv4 address ] [ Netmask ]\n"
+					   		 "	./HostDiscover [ Ipv4 address ]/[ Netmask ]");
 }
 
 int main(int argc, char *argv[])
-{	
-	std::vector<std::string> arguments(argv, argv + argc);
+{		
+	std::vector<std::string> arguments;	
+	if(argc > 1) arguments.assign(argv, argv + argc);
 
 	try
-	{	
+	{		
 		if(argc == 1)
 		{
-			std::runtime_error("No arguments passed. For more info use \"./HostDiscover help\"");
+			printUsage();
 		}
-
-		if(argc == 2)
+		else if(argc == 2)
 		{
-			if (arguments[1] == "help")
-			{
-				std::runtime_error("Please do not use in military, secret service organizations, or for illegal purposes.\n"
-								  		"Syntax: ./HostDiscover [ Ipv4 address ] [ Netmask ] or\n"
-								  		"./HostDiscover [ Ipv4 address ]/[ Netmask ]");
-			}
-
-			if (countPoints(arguments, 1) != 3 && arguments[1] != "help")
-			{
-				std::runtime_error("Wrong usage!\n"
-										"Ex: ./HostDiscover [ Ipv4 address ]/[ Netmask ] --> 192.168.179.128/24\n"
-								  		"For more info use \"./HostDiscover help\"");
-			}
-
-			if (countSlashes(arguments, 1) == 0 && arguments[1] != "help")
-			{
-				std::runtime_error("Wrong usage!\n"
-										"Ex: ./HostDiscover [ Ipv4 address ]/[ Netmask ] --> 192.168.179.128/24\n"
-								  		"For more info use \"./HostDiscover help\"");
-			}
-
-			if (countSlashes(arguments, 1) > 1 && arguments[1] != "help")
-			{
-				std::runtime_error("Wrong usage!\n"
-										"Ex: ./HostDiscover [ Ipv4 address ]/[ Netmask ] --> 192.168.179.128/24\n"
-								  		"For more info use \"./HostDiscover help\"");
-			}
-
-			if (countPoints(arguments, 1) != 3 || arguments[1].size() < 9 && arguments[1] != "help")
-			{
-				std::runtime_error("Wrong! Correct form: x.x.x.x/x");
-			}
+			size_t nPointsIP = std::count(arguments[1].begin(), arguments[1].end(), '.');
+			size_t nSlashes = std::count(arguments[1].begin(), arguments[1].end(), '/');
+			if (nPointsIP != 3 || nSlashes != 1 || arguments[1].size() < 12)
+				printUsage();
 		}
-
-		if(argc > 2)
+		else if(argc == 3)
 		{
-			if (argc > 3 && arguments[1] != "help")
-			{
-				std::runtime_error("Wrong usage!\n"
-										"Ex: ./HostDiscover [ Ipv4 address ] [ Netmask ] --> 192.168.179.128 255.255.255.0\n"
-								  		"For more info use \"./HostDiscover help\"");
-			}
-
-			if (countPoints(arguments, 1) != 3 && countPoints(arguments, 2) != 3 && arguments[1] != "help")
-			{
-				std::runtime_error("Wrong usage!\n"
-										"Ex: ./HostDiscover [ Ipv4 address ] [ Netmask ] --> 192.168.179.128 255.255.255.0\n"
-								  		"For more info use \"./HostDiscover help\"");
-			}
-
-			if (countPoints(arguments, 1) != 3 || arguments[1].size() < 7 && arguments[1] != "help")
-			{
-				std::runtime_error("Wrong address Ipv4 format! Correct Ipv4 address form: x.x.x.x");
-			}
-
-			if (countPoints(arguments, 2) != 3 || arguments[2].size() < 7 && arguments[1] != "help")
-			{
-				std::runtime_error("Wrong Netmask format! Correct Netmask form: x.x.x.x");
-			}
+			size_t nPointsIP = std::count(arguments[1].begin(), arguments[1].end(), '.');
+			size_t nPointsNetmask = std::count(arguments[2].begin(), arguments[2].end(), '.');
+			if(nPointsIP != 3 || arguments[1].size() < 9 || arguments[2].size() < 9)
+				printUsage();
 		}
 	}
 	catch (std::runtime_error const& e)
@@ -416,13 +275,13 @@ int main(int argc, char *argv[])
 		return 1;
 	}	
 
-	std::array<std::string, 2> givenIpAddrAndMask;
+	std::pair<std::string, std::string> givenIpAddrAndMask;
 	std::string givenIpAddr, givenNetmask;
 	if(argc == 2) // CIDR notation used
 	{
 		givenIpAddrAndMask = separateIPfromCIDR(arguments[1]);
-		givenIpAddr = givenIpAddrAndMask[0];
-		givenNetmask = givenIpAddrAndMask[1];
+		givenIpAddr = givenIpAddrAndMask.first;
+		givenNetmask = givenIpAddrAndMask.second;
 	}
 	else
 	{
@@ -438,7 +297,7 @@ int main(int argc, char *argv[])
 	const std::string lastIpAddr = lastIpAddrRange(firstIpAddr, givenNetmask);
 	std::cout << SET_BOLD_BLUE("[ ...to ] " << lastIpAddr << "\n\n");
 	
-	scan(firstIpAddr, lastIpAddr);
+	// scan(firstIpAddr, lastIpAddr);
 
 	return 0;
 }

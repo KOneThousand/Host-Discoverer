@@ -1,8 +1,8 @@
 //******************************************************
 // Filename: HostDiscoverer.cpp
 // Purpose:  Scan of local networks
-// Author:   KOneThousand; 
-// Date:     Dicember 27, 2021
+// Author:   KOneThousand 
+// Date:     June 21, 2022
 //******************************************************
 
 #include <iostream>
@@ -12,6 +12,7 @@
 #include <cstring>
 #include <netinet/ip_icmp.h>
 #include <signal.h>
+
 #include "Kping.hpp"
 
 constexpr unsigned int PING_PKT_S      = 64;  // Define the Packet Constants ping packet size
